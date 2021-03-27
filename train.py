@@ -18,7 +18,7 @@ from utils.dataload import create_dataloader, read_augment_images
 from utils.model import Encoder, Decoder, init_weights
 from tqdm import tqdm
 
-if __name__ = "__main__":
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch-size" ,type=int,default=4)
     parser.add_argument("--num-epoch",type=int,default=50)
