@@ -13,16 +13,16 @@ from models.earlyfusion1024 import Encoder, Decoder, init_weights
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--batch-size" ,type=int,default=4)
-    parser.add_argument("--num-epoch",type=int,default=20)
+    parser.add_argument("--batch-size" ,type=int,default=2)
+    parser.add_argument("--num-epoch",type=int,default=10)
     parser.add_argument("--learn-rate",type=float,default=0.001)
     parser.add_argument("--beta1", type=float, default=0.5)
     parser.add_argument("--beta2", type=float, default=0.99)
     parser.add_argument("--train-loc", type=str, default="./train.json")
-    parser.add_argument("--weights-loc", type=str, default="./")
+    parser.add_argument("--weights-loc", type=str, default="./weights/")
     parser.add_argument("--init-weight", type=bool, default=True)
-    parser.add_argument("--checkpoint", type=int, default=2)
-    parser.add_argument("--out-loc",type=str,default="./")
+    parser.add_argument("--checkpoint", type=int, default=1)
+    parser.add_argument("--out-loc",type=str,default="./w/")
     parser.add_argument("--cache-images",type=bool,default=False)
     parser.add_argument("--ngpu", type=int, default=1)
 
@@ -40,14 +40,14 @@ if __name__ == "__main__":
     init_w = opt.init_weight
     c_numb = opt.checkpoint
     out_loc = opt.out_loc
-    ngpu = opt.ngpu()
+    ngpu = opt.ngpu
 
     cache_imgs = opt.cache_images
 
     with open(train_loc) as json_file:
         t1trainimgs = json.load(json_file)
 
-    dataloader = create_dataloader(data_loc, bsize)
+    dataloader = create_dataloader(train_loc, bsize)
 
     if cache_imgs:
         t1imgsdict = dict()
@@ -77,8 +77,8 @@ if __name__ == "__main__":
     imgs2 = torch.zeros((bsize, 3, 512, 512), dtype=torch.float).to(device)
     imgs = torch.cat((imgs1, imgs2), 1)
 
-    t1x = netE(imgs)
-    ot1 = netD(t1x)
+    #tx = netE(imgs)
+    #ot = netD(tx)
 
     print("Starting Training Loop...")
     losses = []
@@ -97,7 +97,6 @@ if __name__ == "__main__":
                 continue
             for i, img_loc in enumerate(img_paths):
                 if cache_imgs:
-
                     img1 = t1imgsdict[img_loc]
                     img2 = t2imgsdict[img_loc.replace("/im1/", "/im2/")]
                 else:
@@ -105,23 +104,21 @@ if __name__ == "__main__":
                     img2 = cv2.cvtColor(cv2.imread(img_loc.replace("/im1/", "/im2/"), cv2.IMREAD_UNCHANGED), cv2.COLOR_BGR2RGB)
 
                 aug = random.random()
-                    if aug < 0.2:
-                        img1 = cv2.rotate(img1, rotateCode=cv2.ROTATE_90_CLOCKWISE)
-                        img2 = cv2.rotate(img2, rotateCode=cv2.ROTATE_90_CLOCKWISE)
-                    elif aug < 0.4:
-                        img1 = cv2.rotate(img1, rotateCode=cv2.ROTATE_90_COUNTERCLOCKWISE)
-                        img2 = cv2.rotate(img2, rotateCode=cv2.ROTATE_90_COUNTERCLOCKWISE)
-                    elif aug < 0.6:
-                        img1 = cv2.rotate(img1, rotateCode=cv2.ROTATE_180)
-                        img2 = cv2.rotate(img2, rotateCode=cv2.ROTATE_180)
-                    elif aug < 0.8:
-                        img1 = cv2.flip(img1, 0)
-                        img2 = cv2.flip(img2, 0)
-                    else:
-                        img1 = cv2.flip(img1, 1)
-                        img2 = cv2.flip(img2, 1)
-
-
+                if aug < 0.2:
+                    img1 = cv2.rotate(img1, rotateCode=cv2.ROTATE_90_CLOCKWISE)
+                    img2 = cv2.rotate(img2, rotateCode=cv2.ROTATE_90_CLOCKWISE)
+                elif aug < 0.4:
+                    img1 = cv2.rotate(img1, rotateCode=cv2.ROTATE_90_COUNTERCLOCKWISE)
+                    img2 = cv2.rotate(img2, rotateCode=cv2.ROTATE_90_COUNTERCLOCKWISE)
+                elif aug < 0.6:
+                    img1 = cv2.rotate(img1, rotateCode=cv2.ROTATE_180)
+                    img2 = cv2.rotate(img2, rotateCode=cv2.ROTATE_180)
+                elif aug < 0.8:
+                    img1 = cv2.flip(img1, 0)
+                    img2 = cv2.flip(img2, 0)
+                else:
+                    img1 = cv2.flip(img1, 1)
+                    img2 = cv2.flip(img2, 1)
 
                 t1 = ((img1.astype(np.float) / 255.0) * 2) - 1
                 t2 = ((img2.astype(np.float) / 255.0) * 2) - 1
@@ -152,8 +149,8 @@ if __name__ == "__main__":
 
         or1 = np.round((imgs1[0].permute(1, 2, 0).cpu().numpy() + 1) / 2 * 255)
         or2 = np.round((imgs2[0].permute(1, 2, 0).cpu().numpy() + 1) / 2 * 255)
-        cr1 = np.round((ot1[0].permute(1, 2, 0).cpu().detach().numpy() + 1) / 2 * 255)
-        cr2 = np.round((ot1[0].permute(1, 2, 0).cpu().detach().numpy() + 1) / 2 * 255)
+        cr1 = np.round((((imgs2[0] - imgs1[0]) / 2).permute(1, 2, 0).cpu().detach().numpy() + 1) / 2 * 255)
+        cr2 = np.round((ot[0].permute(1, 2, 0).cpu().detach().numpy() + 1) / 2 * 255)
 
         vis1 = np.concatenate((or1, or2), axis=1)
         vis2 = np.concatenate((cr1, cr2), axis=1)

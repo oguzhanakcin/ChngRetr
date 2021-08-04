@@ -11,7 +11,7 @@ from sklearn.metrics.pairwise import cosine_distances as cdist
 from sklearn.metrics.pairwise import euclidean_distances as eucdist
 from sklearn.metrics.pairwise import manhattan_distances as mandist
 
-from utils.dataload import create_dataloader
+from utils.dataload import create_dataloader,get_nums
 
 from models.earlyfusion1024 import Encoder
 
@@ -21,9 +21,8 @@ if __name__ == "__main__":
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--ngpu", type=int, default=1)
     parser.add_argument("--test-loc", type=str, default="./test.json")
-    parser.add_argument("--weights-loc", type=str, default="./")
-    parser.add_argument("--out-loc",type=str,default="./")
-    parser.add_argument("--second-labels-loc", type=str, default="./labels.csv")
+    parser.add_argument("--weights-loc", type=str, default="./weights/")
+    parser.add_argument("--second-labels-loc", type=str, default="./Second/secondclabels.csv")
 
     opt = parser.parse_args()
     print(opt)
@@ -32,8 +31,7 @@ if __name__ == "__main__":
 
     test_loc = opt.test_loc
     weights_loc = opt.weights_loc
-    out_loc = opt.out_loc
-    ngpu = opt.ngpu()
+    ngpu = opt.ngpu
     second_labels_loc = opt.second_labels_loc
 
     device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
@@ -46,7 +44,9 @@ if __name__ == "__main__":
 
     netE.eval()
 
-    latentspace = np.zeros((594, 32 * 32))
+    dataloader = create_dataloader(test_loc, bsize)
+
+    latentspace = np.zeros((len(dataloader), 32 * 32))
     imgs_list = []
     imgs1 = torch.zeros((bsize, 3, 512, 512), dtype=torch.float).to(device)
     imgs2 = torch.zeros((bsize, 3, 512, 512), dtype=torch.float).to(device)
@@ -148,10 +148,9 @@ if __name__ == "__main__":
 
     shorter = [True if (i in img_numbs) else False for i in labels.index]
     labels = labels[shorter]
-    labels.head()
 
     labels_list = list(labels.columns)
-    retrievedperf = {k: [] for k in labels_list}
+    l2retrievedperf = {k: [] for k in labels_list}
     num_retr = 5
     for numbs in img_numbs:
         retr_img_list = l2simretrieved_imgs.loc[numbs][:num_retr]
@@ -165,14 +164,63 @@ if __name__ == "__main__":
                 if retr_label_info[label_i] == 1:
                     pres[label_i] += 1 / num_retr
         for label_i in q_labels:
-            retrievedperf[label_i].append(pres[label_i])
+            l2retrievedperf[label_i].append(pres[label_i])
     for label_i in labels_list:
-        if retrievedperf[label_i] != []:
-            retrievedperf[label_i] = sum(retrievedperf[label_i]) / len(retrievedperf[label_i])
+        if l2retrievedperf[label_i] != []:
+            l2retrievedperf[label_i] = sum(l2retrievedperf[label_i]) / len(l2retrievedperf[label_i])
         else:
-            retrievedperf[label_i] = 0
+            l2retrievedperf[label_i] = 0
 
-    print(retrievedperf)
+    print("L2-Retrieval Performance")
+    print(l2retrievedperf)
+
+    l1retrievedperf = {k: [] for k in labels_list}
+    num_retr = 5
+    for numbs in img_numbs:
+        retr_img_list = l1simretrieved_imgs.loc[numbs][:num_retr]
+        label_info = labels.loc[numbs]
+        q_labels = [labels_list[i] for i in range(36) if label_info[i] == 1]
+        pres = {k: 0 for k in q_labels}
+        for i in range(num_retr):
+            retr_img_num = retr_img_list[i]
+            retr_label_info = labels.loc[retr_img_num]
+            for label_i in q_labels:
+                if retr_label_info[label_i] == 1:
+                    pres[label_i] += 1 / num_retr
+        for label_i in q_labels:
+            l1retrievedperf[label_i].append(pres[label_i])
+    for label_i in labels_list:
+        if l1retrievedperf[label_i] != []:
+            l1retrievedperf[label_i] = sum(l1retrievedperf[label_i]) / len(l1retrievedperf[label_i])
+        else:
+            l1retrievedperf[label_i] = 0
+
+    print("L1-Retrieval Performance")
+    print(l1retrievedperf)
+
+    csimretrievedperf = {k: [] for k in labels_list}
+    num_retr = 5
+    for numbs in img_numbs:
+        retr_img_list = csimretrieved_imgs.loc[numbs][:num_retr]
+        label_info = labels.loc[numbs]
+        q_labels = [labels_list[i] for i in range(36) if label_info[i] == 1]
+        pres = {k: 0 for k in q_labels}
+        for i in range(num_retr):
+            retr_img_num = retr_img_list[i]
+            retr_label_info = labels.loc[retr_img_num]
+            for label_i in q_labels:
+                if retr_label_info[label_i] == 1:
+                    pres[label_i] += 1 / num_retr
+        for label_i in q_labels:
+            csimretrievedperf[label_i].append(pres[label_i])
+    for label_i in labels_list:
+        if csimretrievedperf[label_i] != []:
+            csimretrievedperf[label_i] = sum(csimretrievedperf[label_i]) / len(csimretrievedperf[label_i])
+        else:
+            csimretrievedperf[label_i] = 0
+
+    print("Cosine Similarity-Retrieval Performance")
+    print(csimretrievedperf)
 
 
 

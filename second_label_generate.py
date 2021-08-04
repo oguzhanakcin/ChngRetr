@@ -2,10 +2,10 @@ import cv2
 from tqdm import tqdm
 import pandas as pd
 
-
 from utils.dataload import get_img_locs,calculate_changes,convert_token,binarize
 
 img1_loc = "./Second/im1"
+label_loc = "./Second/"
 
 
 t1_locs = get_img_locs(img1_loc,".png")
@@ -32,12 +32,8 @@ for i in pbar:
 
 
 changes_label = changes_frame.applymap(binarize)
+changes_label.to_csv(label_loc+"secondclabels.csv",index_label="Img No")
 
+print("Number of Images per Change Class")
 print(changes_label.sum())
 
-
-
-
-#changes_frame.to_csv("./drive/MyDrive/ChangeRetrieval/secondclabels.csv",index_label="Img No")
-#a = pd.read_csv("./drive/MyDrive/ChangeRetrieval/secondclabels.csv")
-#a.set_index("Img No")
